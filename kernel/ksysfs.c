@@ -225,10 +225,46 @@ static struct attribute_group gentle_fair_sleepers_attr_group = {
 /* Initialize fast charge sysfs folder */
 static struct kobject *gentle_fair_sleepers_kobj;
 
+static unsigned int Larch_power = 1;
+extern void relay_ap(unsigned int ap);
+
+static ssize_t arch_power_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", Larch_power);
+}
+static ssize_t arch_power_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+	if (input != 0 && input != 1)
+		input = 0;
+
+	Larch_power = input;
+	relay_ap(Larch_power);
+	return count;
+}
+
+static struct kobj_attribute arch_power_attribute =
+__ATTR(arch_power, 0666, arch_power_show, arch_power_store);
+
+static struct attribute *arch_power_attrs[] = {
+&arch_power_attribute.attr,
+NULL,
+};
+
+static struct attribute_group arch_power_attr_group = {
+.attrs = arch_power_attrs,
+};
+
+/* Initialize arch power sysfs folder */
+static struct kobject *arch_power_kobj;
+
 static int __init ksysfs_init(void)
 {
 	int error;
 	int retval;
+	int ret;
 
 	kernel_kobj = kobject_create_and_add("kernel", NULL);
 	if (!kernel_kobj) {
@@ -241,9 +277,12 @@ static int __init ksysfs_init(void)
 
 	gentle_fair_sleepers_kobj = kobject_create_and_add("sched", kernel_kobj);
 	retval = sysfs_create_group(gentle_fair_sleepers_kobj, &gentle_fair_sleepers_attr_group);
+	ret = sysfs_create_group(arch_power_kobj, &arch_power_attr_group);
 
 	if (retval)
 		kobject_put(gentle_fair_sleepers_kobj);
+	if (ret)
+		kobject_put(arch_power_kobj);
 
 	if (notes_size > 0) {
 		notes_attr.size = notes_size;
